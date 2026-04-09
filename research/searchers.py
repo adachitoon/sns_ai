@@ -85,13 +85,12 @@ X_QUERIES = ["AI 新機能", "LLM リリース", "OpenAI", "Claude"]
 
 
 def _parse_json_response(text: str) -> list | dict:
+    import re
     text = text.strip()
-    if text.startswith("```"):
-        parts = text.split("```")
-        text = parts[1] if len(parts) > 1 else text
-        if text.startswith("json"):
-            text = text[4:]
-    return json.loads(text.strip())
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if m:
+        text = m.group(1).strip()
+    return json.loads(text)
 
 
 def fetch_x_posts(grok_client: GrokClient | None = None) -> list[dict]:
@@ -125,6 +124,7 @@ def fetch_x_posts(grok_client: GrokClient | None = None) -> list[dict]:
             search_mode="on",
             search_sources=[{"type": "x"}],
         )
-        return _parse_json_response(response)
+        parsed = _parse_json_response(response)
+        return parsed if isinstance(parsed, list) else []
     except Exception:
         return []

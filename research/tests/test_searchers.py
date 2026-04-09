@@ -158,3 +158,13 @@ def test_fetch_x_posts_handles_invalid_json(monkeypatch):
 
     result = fetch_x_posts(grok_client=mock_client)
     assert result == []
+
+
+def test_fetch_x_posts_handles_markdown_wrapped_json(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.return_value = '```json\n[{"author": "test", "content": "news", "likes": 150, "retweets": 55, "bookmarks": 35, "url": "https://x.com/test/2", "is_english": false, "translation": "", "jp_relevance": ""}]\n```'
+
+    result = fetch_x_posts(grok_client=mock_client)
+    assert len(result) == 1
+    assert result[0]["author"] == "test"
