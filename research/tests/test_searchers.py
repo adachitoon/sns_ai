@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 import pytest
-from research.searchers import fetch_hn_stories, fetch_reddit_posts, fetch_x_posts
+from research.searchers import fetch_hn_stories, fetch_reddit_posts, fetch_x_posts, fetch_product_hunt, fetch_google_trends
 from research.grok_client import GrokClient
 
 
@@ -168,3 +168,48 @@ def test_fetch_x_posts_handles_markdown_wrapped_json(monkeypatch):
     result = fetch_x_posts(grok_client=mock_client)
     assert len(result) == 1
     assert result[0]["author"] == "test"
+
+
+def test_fetch_product_hunt_calls_grok_with_web_search(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.return_value = '[{"name": "TestAI", "description": "AI tool", "upvotes": 300, "url": "https://producthunt.com/posts/testai"}]'
+
+    result = fetch_product_hunt(grok_client=mock_client)
+
+    call_kwargs = mock_client.chat.call_args[1]
+    assert call_kwargs["search_mode"] == "on"
+    assert call_kwargs["search_sources"] == [{"type": "web"}]
+    assert len(result) == 1
+    assert result[0]["name"] == "TestAI"
+
+
+def test_fetch_product_hunt_handles_error(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.side_effect = Exception("API error")
+
+    result = fetch_product_hunt(grok_client=mock_client)
+    assert result == []
+
+
+def test_fetch_google_trends_calls_grok_with_web_search(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.return_value = '{"rising_keywords": ["Claude", "ChatGPT"], "related_rising": ["AIエージェント"]}'
+
+    result = fetch_google_trends(grok_client=mock_client)
+
+    call_kwargs = mock_client.chat.call_args[1]
+    assert call_kwargs["search_mode"] == "on"
+    assert call_kwargs["search_sources"] == [{"type": "web"}]
+    assert result["rising_keywords"] == ["Claude", "ChatGPT"]
+
+
+def test_fetch_google_trends_handles_error(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.side_effect = Exception("API error")
+
+    result = fetch_google_trends(grok_client=mock_client)
+    assert result == {"rising_keywords": [], "related_rising": []}

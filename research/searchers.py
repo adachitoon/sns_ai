@@ -128,3 +128,63 @@ def fetch_x_posts(grok_client: GrokClient | None = None) -> list[dict]:
         return parsed if isinstance(parsed, list) else []
     except Exception:
         return []
+
+
+def fetch_product_hunt(grok_client: GrokClient | None = None) -> list[dict]:
+    if grok_client is None:
+        grok_client = GrokClient()
+
+    date = datetime.now().strftime("%Y年%m月%d日")
+    prompt = f"""
+{date}のProduct Huntで上位にランクインしているAI関連ツール・サービスTOP3を教えてください。
+
+以下のJSON形式のみで返してください（説明文・コードブロック不要）:
+[
+  {{
+    "name": "ツール名",
+    "description": "一言説明",
+    "upvotes": 数値,
+    "url": "Product HuntのURL"
+  }}
+]
+
+情報が取得できない場合は [] を返してください。
+"""
+    try:
+        response = grok_client.chat(
+            messages=[{"role": "user", "content": prompt}],
+            search_mode="on",
+            search_sources=[{"type": "web"}],
+        )
+        parsed = _parse_json_response(response)
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        return []
+
+
+def fetch_google_trends(grok_client: GrokClient | None = None) -> dict:
+    if grok_client is None:
+        grok_client = GrokClient()
+
+    date = datetime.now().strftime("%Y年%m月%d日")
+    prompt = f"""
+{date}現在のGoogle Trendsで日本で急上昇中のAI関連キーワードと、ClaudeおよびChatGPTの関連急上昇キーワードを教えてください。
+
+以下のJSON形式のみで返してください（説明文・コードブロック不要）:
+{{
+  "rising_keywords": ["キーワード1", "キーワード2"],
+  "related_rising": ["関連キーワード1", "関連キーワード2"]
+}}
+
+情報が取得できない場合は {{"rising_keywords": [], "related_rising": []}} を返してください。
+"""
+    try:
+        response = grok_client.chat(
+            messages=[{"role": "user", "content": prompt}],
+            search_mode="on",
+            search_sources=[{"type": "web"}],
+        )
+        parsed = _parse_json_response(response)
+        return parsed if isinstance(parsed, dict) else {"rising_keywords": [], "related_rising": []}
+    except Exception:
+        return {"rising_keywords": [], "related_rising": []}
