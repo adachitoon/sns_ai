@@ -14,6 +14,16 @@ from research.searchers import (
 )
 from research.formatter import generate_report, check_urls
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+_FALLBACKS: dict = {
+    "x_posts": [],
+    "hn_stories": [],
+    "reddit_posts": [],
+    "product_hunt": [],
+    "google_trends": {"rising_keywords": [], "related_rising": []},
+}
+
 
 def run_research() -> str:
     load_dotenv()
@@ -37,7 +47,7 @@ def run_research() -> str:
                 results[key] = future.result()
                 print(f"  ✅ {key}")
             except Exception as e:
-                results[key] = []
+                results[key] = _FALLBACKS[key]
                 print(f"  ⚠️  {key} 取得失敗: {e}")
 
     results["date"] = date
@@ -48,7 +58,7 @@ def run_research() -> str:
     print("🔗 URL疎通確認中...")
     report = check_urls(report)
 
-    output_path = Path(f"01_リサーチ/{date}.md")
+    output_path = PROJECT_ROOT / "01_リサーチ" / f"{date}.md"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report, encoding="utf-8")
 
