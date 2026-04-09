@@ -67,3 +67,64 @@ def test_fetch_hn_stories_returns_at_most_5():
         result = fetch_hn_stories()
 
     assert len(result) <= 5
+
+
+from research.searchers import fetch_reddit_posts
+
+
+def _make_reddit_response(posts: list[dict]) -> dict:
+    return {
+        "data": {
+            "children": [{"data": p} for p in posts]
+        }
+    }
+
+
+def test_fetch_reddit_posts_returns_filtered_posts():
+    posts = [
+        {"title": "Claude 3.7 vs GPT-4o benchmark", "ups": 350, "num_comments": 80,
+         "permalink": "/r/LocalLLaMA/comments/abc/"},
+        {"title": "Daily discussion thread", "ups": 50, "num_comments": 20,
+         "permalink": "/r/ChatGPT/comments/def/"},
+        {"title": "New tool for local LLM", "ups": 100, "num_comments": 60,
+         "permalink": "/r/ClaudeAI/comments/ghi/"},
+    ]
+
+    def mock_get(url, headers=None, timeout=10):
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json.return_value = _make_reddit_response(posts)
+        return resp
+
+    with patch("research.searchers.requests.get", side_effect=mock_get):
+        result = fetch_reddit_posts()
+
+    titles = [p["title"] for p in result]
+    assert "Claude 3.7 vs GPT-4o benchmark" in titles
+    assert "New tool for local LLM" in titles
+    assert "Daily discussion thread" not in titles
+
+
+def test_fetch_reddit_posts_handles_http_error():
+    with patch("research.searchers.requests.get", side_effect=Exception("503")):
+        result = fetch_reddit_posts()
+    assert result == []
+
+
+def test_fetch_reddit_posts_returns_at_most_5():
+    posts = [
+        {"title": f"Post {i}", "ups": 300, "num_comments": 100,
+         "permalink": f"/r/LocalLLaMA/comments/{i}/"}
+        for i in range(20)
+    ]
+
+    def mock_get(url, headers=None, timeout=10):
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json.return_value = _make_reddit_response(posts)
+        return resp
+
+    with patch("research.searchers.requests.get", side_effect=mock_get):
+        result = fetch_reddit_posts()
+
+    assert len(result) <= 5

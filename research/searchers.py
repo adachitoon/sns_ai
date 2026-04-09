@@ -47,3 +47,33 @@ def fetch_hn_stories() -> list[dict]:
                 "comments": comments,
             })
     return results[:5]
+
+
+REDDIT_SUBREDDITS = ["LocalLLaMA", "ChatGPT", "ClaudeAI"]
+
+
+def fetch_reddit_posts() -> list[dict]:
+    results = []
+    for subreddit in REDDIT_SUBREDDITS:
+        for attempt in range(3):
+            try:
+                url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=25"
+                resp = requests.get(url, headers=REDDIT_HEADERS, timeout=10)
+                resp.raise_for_status()
+                posts = resp.json()["data"]["children"]
+                for post in posts:
+                    data = post["data"]
+                    upvotes = data.get("ups", 0)
+                    comments = data.get("num_comments", 0)
+                    if upvotes >= 200 or comments >= 50:
+                        results.append({
+                            "title": data.get("title", ""),
+                            "url": f"https://www.reddit.com{data.get('permalink', '')}",
+                            "upvotes": upvotes,
+                            "comments": comments,
+                            "subreddit": subreddit,
+                        })
+                break  # success - exit retry loop
+            except Exception:
+                continue  # retry on failure (after 3 failures, move to next subreddit)
+    return results[:5]
