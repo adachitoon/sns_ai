@@ -213,3 +213,21 @@ def test_fetch_google_trends_handles_error(monkeypatch):
 
     result = fetch_google_trends(grok_client=mock_client)
     assert result == {"rising_keywords": [], "related_rising": []}
+
+
+def test_fetch_product_hunt_handles_non_list_response(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.return_value = '{"error": "not available"}'
+
+    result = fetch_product_hunt(grok_client=mock_client)
+    assert result == []
+
+
+def test_fetch_google_trends_handles_non_dict_response(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.return_value = '["keyword1", "keyword2"]'
+
+    result = fetch_google_trends(grok_client=mock_client)
+    assert result == {"rising_keywords": [], "related_rising": []}
