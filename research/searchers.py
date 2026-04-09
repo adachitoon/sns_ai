@@ -55,7 +55,7 @@ REDDIT_SUBREDDITS = ["LocalLLaMA", "ChatGPT", "ClaudeAI"]
 def fetch_reddit_posts() -> list[dict]:
     results = []
     for subreddit in REDDIT_SUBREDDITS:
-        for attempt in range(3):
+        for _ in range(3):
             try:
                 url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=25"
                 resp = requests.get(url, headers=REDDIT_HEADERS, timeout=10)

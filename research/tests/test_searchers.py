@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 import pytest
-from research.searchers import fetch_hn_stories
+from research.searchers import fetch_hn_stories, fetch_reddit_posts
 
 
 def _make_hn_story(story_id, title, score, descendants, url="https://example.com"):
@@ -67,9 +67,6 @@ def test_fetch_hn_stories_returns_at_most_5():
         result = fetch_hn_stories()
 
     assert len(result) <= 5
-
-
-from research.searchers import fetch_reddit_posts
 
 
 def _make_reddit_response(posts: list[dict]) -> dict:
