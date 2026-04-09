@@ -1,5 +1,7 @@
+import json
 import requests
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from research.grok_client import GrokClient
 
 HN_BASE = "https://hacker-news.firebaseio.com/v0"
@@ -77,3 +79,52 @@ def fetch_reddit_posts() -> list[dict]:
             except Exception:
                 continue  # retry on failure (after 3 failures, move to next subreddit)
     return results[:5]
+
+
+X_QUERIES = ["AI 新機能", "LLM リリース", "OpenAI", "Claude"]
+
+
+def _parse_json_response(text: str) -> list | dict:
+    text = text.strip()
+    if text.startswith("```"):
+        parts = text.split("```")
+        text = parts[1] if len(parts) > 1 else text
+        if text.startswith("json"):
+            text = text[4:]
+    return json.loads(text.strip())
+
+
+def fetch_x_posts(grok_client: GrokClient | None = None) -> list[dict]:
+    if grok_client is None:
+        grok_client = GrokClient()
+
+    date = datetime.now().strftime("%Y年%m月%d日")
+    prompt = f"""
+{date}の直近24時間以内のXの投稿を以下のクエリで検索し、いいね100以上、RT50以上、ブックマーク30以上のいずれかを満たす投稿をTOP5件抽出してください。
+
+検索クエリ: {', '.join(X_QUERIES)}
+
+以下のJSON形式のみで返してください（説明文・コードブロック不要）:
+[
+  {{
+    "author": "投稿者名",
+    "content": "内容の要約（1〜2文）",
+    "likes": 数値,
+    "retweets": 数値,
+    "bookmarks": 数値,
+    "url": "投稿URL",
+    "is_english": true/false,
+    "translation": "英語の場合の日本語訳（日本語の場合は空文字）",
+    "jp_relevance": "英語の場合の日本語圏での重要性（日本語の場合は空文字）"
+  }}
+]
+"""
+    try:
+        response = grok_client.chat(
+            messages=[{"role": "user", "content": prompt}],
+            search_mode="on",
+            search_sources=[{"type": "x"}],
+        )
+        return _parse_json_response(response)
+    except Exception:
+        return []

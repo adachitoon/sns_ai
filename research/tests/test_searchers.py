@@ -1,6 +1,7 @@
 from unittest.mock import patch, MagicMock
 import pytest
-from research.searchers import fetch_hn_stories, fetch_reddit_posts
+from research.searchers import fetch_hn_stories, fetch_reddit_posts, fetch_x_posts
+from research.grok_client import GrokClient
 
 
 def _make_hn_story(story_id, title, score, descendants, url="https://example.com"):
@@ -125,3 +126,35 @@ def test_fetch_reddit_posts_returns_at_most_5():
         result = fetch_reddit_posts()
 
     assert len(result) <= 5
+
+
+def test_fetch_x_posts_calls_grok_with_live_x_search(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.return_value = '[{"author": "test", "content": "AI news", "likes": 200, "retweets": 60, "bookmarks": 40, "url": "https://x.com/test/1", "is_english": false, "translation": "", "jp_relevance": ""}]'
+
+    result = fetch_x_posts(grok_client=mock_client)
+
+    call_kwargs = mock_client.chat.call_args[1]
+    assert call_kwargs["search_mode"] == "on"
+    assert call_kwargs["search_sources"] == [{"type": "x"}]
+    assert len(result) == 1
+    assert result[0]["author"] == "test"
+
+
+def test_fetch_x_posts_handles_grok_error(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.side_effect = Exception("API error")
+
+    result = fetch_x_posts(grok_client=mock_client)
+    assert result == []
+
+
+def test_fetch_x_posts_handles_invalid_json(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    mock_client = MagicMock(spec=GrokClient)
+    mock_client.chat.return_value = "申し訳ありませんが、取得できませんでした。"
+
+    result = fetch_x_posts(grok_client=mock_client)
+    assert result == []
