@@ -1,4 +1,3 @@
-import os
 from unittest.mock import MagicMock, patch
 import pytest
 from research.grok_client import GrokClient
@@ -53,3 +52,17 @@ def test_grok_client_chat_without_search_has_no_extra_body(monkeypatch):
 
         call_kwargs = mock_openai.return_value.chat.completions.create.call_args[1]
         assert "extra_body" not in call_kwargs
+
+
+def test_grok_client_chat_with_search_defaults_to_web_source(monkeypatch):
+    monkeypatch.setenv("GROK_API_KEY", "xai-test")
+    with patch("research.grok_client.OpenAI") as mock_openai:
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "result"
+        mock_openai.return_value.chat.completions.create.return_value = mock_response
+
+        client = GrokClient()
+        client.chat([{"role": "user", "content": "search"}], search_mode="on")
+
+        call_kwargs = mock_openai.return_value.chat.completions.create.call_args[1]
+        assert call_kwargs["extra_body"]["search_parameters"]["sources"] == [{"type": "web"}]

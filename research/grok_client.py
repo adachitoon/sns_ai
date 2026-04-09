@@ -31,4 +31,7 @@ class GrokClient:
                 }
             }
         response = self.client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if content is None:
+            raise ValueError("API returned empty content")
+        return content
