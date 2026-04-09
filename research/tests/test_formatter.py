@@ -1,7 +1,8 @@
 from unittest.mock import patch, MagicMock
 import pytest
 import requests as req
-from research.formatter import check_urls
+from research.formatter import check_urls, generate_report
+from research.grok_client import GrokClient
 
 
 def test_check_urls_keeps_200_url():
@@ -57,10 +58,6 @@ def test_check_urls_handles_multiple_urls():
     assert "https://good.com/page" in result
     assert "https://bad.com/page ⚠️ URL要確認" in result
 
-
-from unittest.mock import MagicMock
-from research.formatter import generate_report
-from research.grok_client import GrokClient
 
 SAMPLE_DATA = {
     "date": "2026.04.09",
