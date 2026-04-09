@@ -53,6 +53,6 @@ def test_check_urls_handles_multiple_urls():
     with patch("research.formatter.requests.head", side_effect=mock_head):
         result = check_urls(report)
 
+    assert "https://good.com/page ⚠️ URL要確認" not in result
     assert "https://good.com/page" in result
-    assert "⚠️" not in result.split("https://good.com/page")[1].split("https://bad.com/page")[0]
     assert "https://bad.com/page ⚠️ URL要確認" in result
