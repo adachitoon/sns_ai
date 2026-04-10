@@ -73,6 +73,55 @@ sns_ai/
 
 ---
 
+## クローンからの使い方
+
+### 1. リポジトリをクローン
+
+```bash
+git clone https://github.com/adachitoon/sns_ai.git
+cd sns_ai
+```
+
+### 2. 依存パッケージをインストール
+
+```bash
+pip install openai python-dotenv
+```
+
+### 3. 環境変数を設定
+
+```bash
+cp .env.example .env
+```
+
+`.env` を開いて各APIキーを入力する。
+
+```
+GROK_API_KEY=取得したキーを貼り付け
+TYPEFULLY_API_KEY=取得したキーを貼り付け
+```
+
+| 変数名 | 取得先 |
+|---|---|
+| `GROK_API_KEY` | https://console.x.ai |
+| `TYPEFULLY_API_KEY` | Typefully → Settings → API |
+
+### 4. Claude Code を起動
+
+```bash
+claude
+```
+
+### 5. 動作確認
+
+```
+/research
+```
+
+`01_リサーチ/YYYY.MM.DD.md` が生成されれば正常に動作している。
+
+---
+
 ## 環境変数
 
 `.env` ファイルに以下を設定（`.env.example` 参照）。
@@ -109,6 +158,5 @@ TYPEFULLY_API_KEY=...  # Typefully API（下書き送信）
 
 - [ ] 根拠・事例・数字が含まれているか
 - [ ] 禁止ワード・絵文字・ハッシュタグが含まれていないか
-- [ ] 140文字以内に収まっているか
 - [ ] 「なるほど」「試してみよう」を起点にしているか（煽っていないか）
 - [ ] 会社として公開して恥ずかしくない内容か
