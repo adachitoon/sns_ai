@@ -131,13 +131,19 @@ def test_fetch_reddit_posts_returns_at_most_5():
 def test_fetch_x_posts_calls_grok_with_live_x_search(monkeypatch):
     monkeypatch.setenv("GROK_API_KEY", "xai-test")
     mock_client = MagicMock(spec=GrokClient)
-    mock_client.chat.return_value = '[{"author": "test", "content": "AI news", "likes": 200, "retweets": 60, "bookmarks": 40, "url": "https://x.com/test/1", "is_english": false, "translation": "", "jp_relevance": ""}]'
+    # 1st call: search (returns markdown), 2nd call: JSON conversion
+    mock_client.chat.side_effect = [
+        "Post by @test: AI news. Likes: 200, RT: 60. URL: https://x.com/test/1",
+        '[{"author": "test", "content": "AI news", "likes": 200, "retweets": 60, "bookmarks": 40, "url": "https://x.com/test/1", "is_english": false, "translation": "", "jp_relevance": ""}]',
+    ]
 
     result = fetch_x_posts(grok_client=mock_client)
 
-    call_kwargs = mock_client.chat.call_args[1]
-    assert call_kwargs["search_mode"] == "on"
-    assert call_kwargs["search_sources"] == [{"type": "x"}]
+    first_call_kwargs = mock_client.chat.call_args_list[0][1]
+    assert first_call_kwargs["search_mode"] == "on"
+    assert first_call_kwargs["search_sources"] == [{"type": "x"}]
+    second_call_kwargs = mock_client.chat.call_args_list[1][1]
+    assert second_call_kwargs["search_mode"] == "off"
     assert len(result) == 1
     assert result[0]["author"] == "test"
 
@@ -154,7 +160,11 @@ def test_fetch_x_posts_handles_grok_error(monkeypatch):
 def test_fetch_x_posts_handles_invalid_json(monkeypatch):
     monkeypatch.setenv("GROK_API_KEY", "xai-test")
     mock_client = MagicMock(spec=GrokClient)
-    mock_client.chat.return_value = "申し訳ありませんが、取得できませんでした。"
+    # 1st call returns search result, 2nd call returns invalid JSON
+    mock_client.chat.side_effect = [
+        "Some search result text",
+        "申し訳ありませんが、取得できませんでした。",
+    ]
 
     result = fetch_x_posts(grok_client=mock_client)
     assert result == []
@@ -163,7 +173,11 @@ def test_fetch_x_posts_handles_invalid_json(monkeypatch):
 def test_fetch_x_posts_handles_markdown_wrapped_json(monkeypatch):
     monkeypatch.setenv("GROK_API_KEY", "xai-test")
     mock_client = MagicMock(spec=GrokClient)
-    mock_client.chat.return_value = '```json\n[{"author": "test", "content": "news", "likes": 150, "retweets": 55, "bookmarks": 35, "url": "https://x.com/test/2", "is_english": false, "translation": "", "jp_relevance": ""}]\n```'
+    # 1st call returns search result, 2nd call returns markdown-wrapped JSON
+    mock_client.chat.side_effect = [
+        "Some search result text",
+        '```json\n[{"author": "test", "content": "news", "likes": 150, "retweets": 55, "bookmarks": 35, "url": "https://x.com/test/2", "is_english": false, "translation": "", "jp_relevance": ""}]\n```',
+    ]
 
     result = fetch_x_posts(grok_client=mock_client)
     assert len(result) == 1

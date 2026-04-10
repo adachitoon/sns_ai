@@ -81,7 +81,7 @@ def fetch_reddit_posts() -> list[dict]:
     return results[:5]
 
 
-X_QUERIES = ["AI 新機能", "LLM リリース", "OpenAI", "Claude"]
+X_QUERIES = ["AI new release", "LLM launch", "OpenAI", "Claude AI", "AI benchmark"]
 
 
 def _parse_json_response(text: str) -> list | dict:
@@ -97,11 +97,29 @@ def fetch_x_posts(grok_client: GrokClient | None = None) -> list[dict]:
     if grok_client is None:
         grok_client = GrokClient()
 
-    date = datetime.now().strftime("%Y年%m月%d日")
-    prompt = f"""
-{date}の直近24時間以内のXの投稿を以下のクエリで検索し、いいね100以上、RT50以上、ブックマーク30以上のいずれかを満たす投稿をTOP5件抽出してください。
+    date = datetime.now().strftime("%Y-%m-%d")
+    search_prompt = f"""
+Search X for the top 5 high-engagement AI-related posts from the last 24 hours ({date}).
+Use these queries: {', '.join(X_QUERIES)}
+For each post, retrieve: author name, content summary, like count, repost count, bookmark count, and post URL.
+Prioritize English-language posts with high engagement (likes 500+, reposts 200+, or bookmarks 100+).
+"""
+    try:
+        raw_response = grok_client.chat(
+            messages=[{"role": "user", "content": search_prompt}],
+            search_mode="on",
+            search_sources=[{"type": "x"}],
+        )
+    except Exception:
+        return []
 
-検索クエリ: {', '.join(X_QUERIES)}
+    json_prompt = f"""
+以下のX投稿データをJSON形式に変換してください。
+情報が不明な数値は0、不明な文字列は空文字を使用してください。
+URLは必ず実際のx.comのURLを使用し、架空のURLを生成しないでください。
+
+データ:
+{raw_response}
 
 以下のJSON形式のみで返してください（説明文・コードブロック不要）:
 [
@@ -119,12 +137,69 @@ def fetch_x_posts(grok_client: GrokClient | None = None) -> list[dict]:
 ]
 """
     try:
-        response = grok_client.chat(
-            messages=[{"role": "user", "content": prompt}],
+        json_response = grok_client.chat(
+            messages=[{"role": "user", "content": json_prompt}],
+            search_mode="off",
+        )
+        parsed = _parse_json_response(json_response)
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        return []
+
+
+CLAUDE_CODE_QUERIES = ["Claude Code", "Claude Code tips", "Claude Code workflow", "Claude Code use case"]
+
+
+def fetch_claude_code_posts(grok_client: GrokClient | None = None) -> list[dict]:
+    if grok_client is None:
+        grok_client = GrokClient()
+
+    date = datetime.now().strftime("%Y-%m-%d")
+    search_prompt = f"""
+Search X for the top 5 high-engagement posts about Claude Code practical use cases from the last 7 days ({date}).
+Use these queries: {', '.join(CLAUDE_CODE_QUERIES)}
+Focus on posts showing real workflows, productivity tips, surprising use cases, or impressive demos.
+For each post, retrieve: author name, content summary, like count, repost count, bookmark count, and post URL.
+Prioritize posts with likes 200+, reposts 50+, or bookmarks 50+.
+"""
+    try:
+        raw_response = grok_client.chat(
+            messages=[{"role": "user", "content": search_prompt}],
             search_mode="on",
             search_sources=[{"type": "x"}],
         )
-        parsed = _parse_json_response(response)
+    except Exception:
+        return []
+
+    json_prompt = f"""
+以下のClaude Code関連X投稿データをJSON形式に変換してください。
+情報が不明な数値は0、不明な文字列は空文字を使用してください。
+URLは必ず実際のx.comのURLを使用し、架空のURLを生成しないでください。
+
+データ:
+{raw_response}
+
+以下のJSON形式のみで返してください（説明文・コードブロック不要）:
+[
+  {{
+    "author": "投稿者名",
+    "content": "内容の要約（1〜2文、英語原文ベース）",
+    "use_case": "実務活用の種類（例：コード生成 / テスト / リファクタリング / ドキュメント生成 / その他）",
+    "likes": 数値,
+    "retweets": 数値,
+    "bookmarks": 数値,
+    "url": "投稿URL",
+    "translation": "日本語訳（1〜2文）",
+    "jp_insight": "日本のエンジニアへの示唆（1文）"
+  }}
+]
+"""
+    try:
+        json_response = grok_client.chat(
+            messages=[{"role": "user", "content": json_prompt}],
+            search_mode="off",
+        )
+        parsed = _parse_json_response(json_response)
         return parsed if isinstance(parsed, list) else []
     except Exception:
         return []
